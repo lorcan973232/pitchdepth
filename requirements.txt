@@ -1,0 +1,18 @@
+# Install a CUDA-enabled build of PyTorch and torchvision first; pip keeps a
+# compatible existing build when these minimum versions are already satisfied.
+torch>=2.3
+torchvision>=0.18
+
+# Data, training, evaluation and figures.
+numpy>=1.24
+Pillow>=10.0
+matplotlib>=3.7
+tqdm>=4.66
+
+# LIME explanations in generate_xai_explanations.py.
+scikit-image>=0.22
+lime>=0.2.0.1
+
+# The zero-shot ZoeDepth reference, loaded through torch.hub.
+timm>=0.9
+scipy>=1.10

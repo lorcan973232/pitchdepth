@@ -1,0 +1,14 @@
+{
+  "sport": "foot",
+  "split": "Train",
+  "depth_space": "model",
+  "crop_fraction": 0.6667,
+  "num_frames": 4071,
+  "height": 1080,
+  "width": 1920,
+  "valid_mean": 0.4548679292201996,
+  "valid_std": 0.08085571229457855,
+  "valid_min": 0.31490159034729004,
+  "valid_max": 0.598392903804779,
+  "data_dir": "SoccerNet/SN-Depth-2025"
+}

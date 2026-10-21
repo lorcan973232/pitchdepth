@@ -1,0 +1,90 @@
+{
+  "_comment": "Each experiment inherits the base settings and changes only the listed arguments. Use python run_experiment.py <name> to print a command, add --seed N for one seed or --all-seeds for every seed below, and --execute to run.",
+  "_base_comment": "Settings for one 8 GB GPU. Sizes are height,width. Every run trains for the full number of epochs and validates after each one.",
+
+  "seeds": [0, 1, 2],
+
+  "base": {
+    "data_dir": "SoccerNet/SN-Depth-2025",
+    "sport": "foot",
+    "encoder": "vitl",
+    "crop_size": "392,672",
+    "loss_fn": "ssitrim",
+    "precision": "bfloat16",
+    "seed": 0,
+    "batch_size": 1,
+    "accumulation_steps": 4,
+    "num_workers": 0,
+    "epochs": 10,
+    "learning_rate": 5e-06,
+    "decoder_lr_multiplier": 10.0,
+    "weight_decay": 0.01,
+    "optimizer": "adamw",
+    "scheduler": "poly",
+    "log_freq": 200,
+    "val_freq": 1,
+    "early_stop_patience": 0,
+    "flags": ["load_head", "mask", "validate", "grad_checkpoint"]
+  },
+
+  "experiments": {
+    "baseline": {
+      "description": "Fine-tuned three-channel Depth Anything V2 baseline.",
+      "args": {"in_chans": 3, "checkpoint_dir": "checkpoints/baseline"}
+    },
+    "pitchdepth": {
+      "description": "Four-channel PitchDepth: RGB plus the fixed ground prior.",
+      "args": {"in_chans": 4, "prior_path": "priors/ground_prior_foot.npy", "prior_norm": "standardize", "prior_scale": 1.0, "prior_init": "zero", "checkpoint_dir": "checkpoints/pitchdepth"}
+    },
+
+    "pitchdepth_silog": {
+      "description": "PitchDepth trained with SILog instead of the trimmed scale-and-shift-invariant loss.",
+      "args": {"in_chans": 4, "loss_fn": "silog", "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/pitchdepth_silog"}
+    },
+    "baseline_silog": {
+      "description": "Three-channel baseline trained with SILog for a matched loss ablation.",
+      "args": {"in_chans": 3, "loss_fn": "silog", "checkpoint_dir": "checkpoints/baseline_silog"}
+    },
+
+    "prior_norm_minmax": {
+      "description": "Prior normalisation experiment: map the prior to [0,1] instead of standardising.",
+      "args": {"in_chans": 4, "prior_norm": "minmax", "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/prior_norm_minmax"}
+    },
+    "prior_norm_none": {
+      "description": "Prior normalisation experiment: feed the raw averaged prior with no normalisation.",
+      "args": {"in_chans": 4, "prior_norm": "none", "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/prior_norm_none"}
+    },
+    "prior_scale_half": {
+      "description": "Prior weighting experiment: down-weight the prior channel (scale 0.5).",
+      "args": {"in_chans": 4, "prior_scale": 0.5, "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/prior_scale_half"}
+    },
+    "prior_scale_double": {
+      "description": "Prior weighting experiment: up-weight the prior channel (scale 2.0).",
+      "args": {"in_chans": 4, "prior_scale": 2.0, "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/prior_scale_double"}
+    },
+    "prior_init_avg": {
+      "description": "Patch-embed init experiment: initialise the 4th conv channel with the mean of the RGB weights instead of zero.",
+      "args": {"in_chans": 4, "prior_init": "avg", "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/prior_init_avg"}
+    },
+    "lr_1e5": {
+      "description": "Learning-rate experiment for PitchDepth (encoder 1e-5).",
+      "args": {"in_chans": 4, "learning_rate": 1e-05, "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/pitchdepth_lr1e5"}
+    },
+    "lr_2e6": {
+      "description": "Learning-rate experiment for PitchDepth (encoder 2e-6).",
+      "args": {"in_chans": 4, "learning_rate": 2e-06, "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/pitchdepth_lr2e6"}
+    },
+    "constant_schedule": {
+      "description": "Schedule experiment: constant learning rate instead of polynomial decay.",
+      "args": {"in_chans": 4, "scheduler": "constant", "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/pitchdepth_constant"}
+    },
+    "cosine_schedule": {
+      "description": "Schedule experiment: cosine decay with warm-up instead of polynomial decay.",
+      "args": {"in_chans": 4, "scheduler": "cosine_warmup", "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/pitchdepth_cosine"}
+    },
+    "longer_15ep": {
+      "description": "Training-duration experiment: 15 epochs instead of 10.",
+      "args": {"in_chans": 4, "epochs": 15, "prior_path": "priors/ground_prior_foot.npy", "checkpoint_dir": "checkpoints/pitchdepth_15ep"}
+    }
+  }
+}

@@ -1,0 +1,16 @@
+# Weights and checkpoints are too large for git; see README for how to obtain them.
+*.pth
+*.ckpt
+*.safetensors
+
+# Dataset, exported predictions and online logging.
+SoccerNet/
+predictions/
+wandb/
+
+# Python environments and caches.
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
