@@ -346,9 +346,10 @@ model is trained with several seeds.
   2014.
 - **SoccerNet-Depth.** The dataset and the five-error evaluation protocol come
   from Leduc et al., "SoccerNet-Depth: a Scalable Dataset for Monocular Depth
-  Estimation in Sports Videos", CVPR Workshops, 2024. See the dataset page for
-  its terms.
+  Estimation in Sports Videos", CVPR Workshops, 2024. SN-Depth-2025 is
+  distributed under GPL-3.0, and the ground prior in `priors/` is computed from
+  its training labels.
 - **ZoeDepth** is loaded unmodified through `torch.hub` as a zero-shot
   reference.
 
-No licence has been chosen yet for the rest of the code.
+The rest of the code is released under the MIT licence; see [`LICENSE`](LICENSE).
