@@ -14,14 +14,123 @@ pipeline:
 
 This repository revisits the experiment from my MSc dissertation in Computing
 in Big Data Analytics and Artificial Intelligence at Atlantic Technological
-University (ATU) Donegal (2026), supervised by Dr Shagufta Henna. It is a new
-implementation with a revised protocol: three seeds per model, fixed-length
-training and checkpoint selection on validation AbsRel.
+University (ATU) Donegal (2026, First Class Honours), supervised by Dr Shagufta
+Henna. The dissertation's results are summarised below. The code here is a new
+implementation with a revised protocol (three seeds per model, fixed-length
+training and checkpoint selection on validation AbsRel), and its own results
+will be added once those runs are complete.
 
-## Results
+## Dissertation results
 
-Results, run logs and figures will be added once both models have been trained
-and evaluated with this code.
+**Finding:** the fixed pitch-geometry prior gave no demonstrated accuracy
+benefit. With validation-selected checkpoints PitchDepth was 1.92% better on
+AbsRel but worse on the other four metrics. With training length held equal,
+the RGB-only baseline was better on all five.
+
+### Setup
+
+Each model was fine-tuned once from the same Depth Anything V2 ViT-L/14
+weights, and the two runs differed in a single setting: the number of input
+channels (3 or 4). The fourth channel's patch-embedding weights started at
+zero, so PitchDepth began numerically identical to the baseline.
+
+| Setting | Dissertation run |
+| --- | --- |
+| Data | SN-Depth-2025 football: 4,071 train, 1,441 validation, 1,423 test frames (20 test clips) |
+| Resolution | 392 x 672 for training and inference |
+| Precision and memory | bfloat16, gradient checkpointing, batch 1 with 4-step accumulation (effective batch 4) |
+| Loss and optimiser | SSIGM loss; AdamW, constant learning rate 5e-6, weight decay 1e-3 |
+| Stopping and selection | Up to 7 epochs, early stopping with patience 3; kept the epoch with the lowest mean of the five validation metrics |
+| Seed | 2673 (one run per model) |
+| Hardware | One NVIDIA RTX 3070 Ti (8 GB), PyTorch 2.5.1, CUDA 12.1 |
+
+Every prediction was aligned to its target with a least-squares scale and
+shift, then scored with the five SoccerNet-Depth errors in `depth_r / 65535`
+space. All five are errors, so lower is better.
+
+### Test split results
+
+Mean ± standard deviation over the 1,423 test frames.
+
+| Model | AbsRel | SqRel (x10^-5) | RMSE | RMSE log | SILog |
+| --- | --- | --- | --- | --- | --- |
+| ZoeDepth (zero-shot) | 0.0469 ± 0.0119 | 187.4 ± 89.1 | 0.0317 ± 0.0063 | 0.0569 ± 0.0156 | 5.685 ± 1.548 |
+| Depth Anything V2, RGB only (fine-tuned) | 0.00594 ± 0.00250 | 5.52 ± 11.28 | 0.00534 ± 0.00193 | 0.00890 ± 0.00443 | 0.890 ± 0.443 |
+| PitchDepth, RGB + ground prior (fine-tuned) | 0.00583 ± 0.00278 | 5.87 ± 11.22 | 0.00554 ± 0.00216 | 0.00898 ± 0.00456 | 0.898 ± 0.455 |
+
+Fine-tuning on football cut the zero-shot error by about 83% to 97% on every
+metric (AbsRel by 87.3% for the baseline and 87.6% for PitchDepth). Whatever
+the prior contributes therefore lies in the last few per cent of each metric.
+
+### Paired comparison of the selected checkpoints
+
+Frames from the same clip are strongly correlated, so each difference was
+checked at frame level, with a moving-block bootstrap (blocks of 25 and 50
+frames) and across the 20 clips. A positive change favours PitchDepth.
+
+| Metric | Change | Frames PitchDepth wins | Block-50 95% CI includes zero | Clips PitchDepth improves | Clip-level Wilcoxon p |
+| --- | --- | --- | --- | --- | --- |
+| AbsRel | +1.92% | 59.0% | Yes | 12 of 20 | 0.33 |
+| SqRel | -6.34% | 43.0% | No | 6 of 20 | 0.033 |
+| RMSE | -3.88% | 37.9% | No | 4 of 20 | 0.005 |
+| RMSE log | -0.97% | 49.8% | Yes | 9 of 20 | 0.28 |
+| SILog | -0.97% | 49.8% | Yes | 9 of 20 | 0.28 |
+
+The AbsRel gain weakened at each stricter level of analysis and was not
+significant across clips. The RMSE cost held at every level. SILog almost
+exactly restates RMSE log under this protocol (correlation above 0.9999), so
+the five metrics are effectively four independent pieces of evidence.
+
+### Epoch-matched control
+
+| Model | Epochs completed | Best epoch | Best validation average |
+| --- | --- | --- | --- |
+| Depth Anything V2, RGB only | 7 | 4 | 0.2824 |
+| PitchDepth | 5 | 2 | 0.2783 |
+
+The two selected checkpoints came from different epochs, so the baseline's
+epoch-2 checkpoint was also scored on the full test split. At equal training
+length the baseline was better on all five metrics. PitchDepth was 5.99% worse
+on AbsRel (0.005828 against 0.005499), 7.77% worse on SqRel, 3.48% worse on
+RMSE and 4.17% worse on RMSE log and SILog. It had the lower error on only
+31.3% of frames and 5 of the 20 clips (matched-pairs effect size -0.51).
+The 1.92% AbsRel gain therefore came from checkpoint selection: the baseline's
+selected epoch-4 checkpoint happened to be worse on test AbsRel than its own
+epoch-2 checkpoint.
+
+### Where the prior helps and where it hurts
+
+Test frames were split into quartiles by how hard they were for the baseline.
+
+| Baseline difficulty quartile | AbsRel: frames PitchDepth wins | RMSE: frames PitchDepth wins |
+| --- | --- | --- |
+| Q1 (easiest) | 82.3% | 67.1% |
+| Q2 | 66.0% | 43.3% |
+| Q3 | 45.4% | 21.4% |
+| Q4 (hardest) | 42.4% | 19.9% |
+
+A Cochran-Armitage trend test confirms the decline for both metrics
+(p < 0.001). The prior helps in standard elevated broadcast views over open
+pitch, which match the average geometry it encodes, and hurts in low, angled
+views dominated by stands or crowds. The largest gain was frame 347 (AbsRel
+-41.1%), a standard view; the largest regression was frame 1228 (AbsRel
++32.4%), a crowded stand. Signed error maps place the gains on the pitch
+surface. Grad-CAM-style, LIME and SmoothGrad maps were diffuse and did not
+separate the two models, so they are supporting evidence only. Both
+fine-tuned models failed in the
+same way on players, thin structures and sharp depth edges, and mostly
+absorbed players into the ground ramp.
+
+### What the results support
+
+A fixed, view-independent prior is an asset when the scene matches it and a
+bias when it does not. The results point towards adaptive, camera-conditioned
+priors rather than a single average map. The conclusions are limited by one
+training run per model and by a synthetic benchmark rendered from a video
+game. Rerunning the evaluation from the saved checkpoints reproduced the
+archived per-frame metrics to within a relative 1.3 x 10^-3.
+
+## Revised protocol in this repository
 
 Each model is trained with three seeds, and every comparison is paired by
 seed. The evaluation compares the two models twice:
@@ -30,7 +139,8 @@ seed. The evaluation compares the two models twice:
   lowest validation AbsRel.
 - **Final-epoch checkpoints:** every run trains for the same ten epochs, so the
   final weights are epoch-matched by construction. A difference here cannot come
-  from one run happening to be selected at a better point in training.
+  from one run happening to be selected at a better point in training, which
+  is the confound the dissertation's epoch-matched control had to correct.
 
 Predictions are aligned to each target with a least-squares scale and shift
 and scored with the five SoccerNet-Depth errors on the 1,423-frame test split,
@@ -319,8 +429,8 @@ model is trained with several seeds.
 - ViT-L training and full-resolution inference require substantial GPU memory.
 - The fixed prior represents average training-camera geometry and does not
   adapt to a new viewpoint.
-- Three seeds per model give a first estimate of run-to-run variance; more
-  seeds would narrow it.
+- The dissertation trained one run per model; this code's three seeds per model
+  give a first estimate of run-to-run variance, and more seeds would narrow it.
 - The dataset is synthetic, so results make no claim about transfer to real
   broadcast footage.
 
